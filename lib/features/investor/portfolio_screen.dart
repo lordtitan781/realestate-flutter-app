@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../shared/widgets/stage_badge.dart';
 import '../../shared/app_state.dart';
 import 'project_details.dart';
+import '../projects/milestones_page.dart';
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
@@ -81,7 +82,7 @@ class PortfolioScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                "Invested: ₹${(proj.capitalRequired * proj.capitalRaised).toStringAsFixed(1)}L",
+                                "Investment Required: ₹${proj.investmentRequired.toStringAsFixed(2)}",
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -93,11 +94,28 @@ class PortfolioScreen extends StatelessWidget {
                             StageBadge(stage: proj.stage),
                             const SizedBox(height: 8),
                             Text(
-                              "${proj.irr}% IRR",
+                              "${proj.expectedIRR.toStringAsFixed(1)}% IRR",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.green,
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: proj.id != null
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => MilestonesPage(
+                                            projectId: proj.id!,
+                                            projectName: proj.title,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                              child: const Text('View Milestones'),
                             ),
                           ],
                         ),

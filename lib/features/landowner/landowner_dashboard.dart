@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../shared/app_state.dart';
+import 'add_land_screen.dart';
+import 'my_lands_screen.dart';
 
 class LandownerDashboard extends StatelessWidget {
   const LandownerDashboard({super.key});
@@ -54,6 +56,27 @@ class LandownerDashboard extends StatelessWidget {
                 ],
                 if (appState.pendingLands.isEmpty && appState.approvedLands.isEmpty)
                   const Center(child: Text("No land submissions yet.")),
+                const SizedBox(height: 20),
+                // Landowner quick actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddLandScreen())),
+                        icon: const Icon(Icons.add_location),
+                        label: const Text('Submit Land'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pushNamed(context, '/my-lands'),
+                        icon: const Icon(Icons.list),
+                        label: const Text('My Lands'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/project.dart';
+import '../features/projects/milestones_page.dart';
 
 class ProjectCard extends StatelessWidget {
   final Project project;
@@ -17,19 +18,14 @@ class ProjectCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Project Image Placeholder
+            // Project Image Placeholder (imageUrl kept for compatibility)
             Container(
               height: 160,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                image: project.imageUrl != null 
-                  ? DecorationImage(image: NetworkImage(project.imageUrl!), fit: BoxFit.cover)
-                  : null,
               ),
-              child: project.imageUrl == null 
-                ? const Icon(Icons.landscape, size: 48, color: Colors.grey)
-                : null,
+              child: const Icon(Icons.landscape, size: 48, color: Colors.grey),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -52,7 +48,7 @@ class ProjectCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          "${project.irr}% IRR",
+                          "${project.expectedIRR.toStringAsFixed(1)}% IRR",
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.secondary,
                             fontWeight: FontWeight.bold,
@@ -84,7 +80,28 @@ class ProjectCard extends StatelessWidget {
                           fontSize: 13,
                         ),
                       ),
-                      const Icon(Icons.arrow_forward, size: 18, color: Colors.grey),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: project.id != null
+                                ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MilestonesPage(
+                                          projectId: project.id!,
+                                          projectName: project.title,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                : null,
+                            child: const Text('View Milestones'),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward, size: 18, color: Colors.grey),
+                        ],
+                      ),
                     ],
                   ),
                 ],

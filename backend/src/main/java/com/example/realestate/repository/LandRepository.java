@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface LandRepository extends JpaRepository<Land, Long> {
+	java.util.List<Land> findByReviewStatus(String reviewStatus);
 }

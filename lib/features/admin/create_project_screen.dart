@@ -18,6 +18,8 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
   final _irrCtrl = TextEditingController();
   final _capReqCtrl = TextEditingController();
   final _capRaisedCtrl = TextEditingController();
+  final _landSizeCtrl = TextEditingController();
+  final _expectedRoiCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -31,29 +33,35 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    setState(() {
+      _isSubmitting = true;
+    });
     final irr = double.tryParse(_irrCtrl.text) ?? 0;
     final capReq = double.tryParse(_capReqCtrl.text) ?? 0;
     final capRaised = double.tryParse(_capRaisedCtrl.text) ?? 0;
+  final landSize = double.tryParse(_landSizeCtrl.text) ?? 0.0;
+  final expectedRoi = double.tryParse(_expectedRoiCtrl.text) ?? 0.0;
 
     final newProject = Project(
-      title: _titleCtrl.text,
+      projectName: _titleCtrl.text,
       location: _locationCtrl.text,
-      theme: _themeCtrl.text,
-      description: _descCtrl.text,
-      irr: irr,
-      capitalRequired: capReq,
-      capitalRaised: capRaised,
+      landSize: landSize,
+      investmentRequired: capReq,
+      expectedIRR: irr,
+      expectedROI: expectedRoi,
       stage: 'Feasibility',
-      imageUrl: null,
-      projectedGrowth: 0,
-      demandIndex: 5,
-      riskProfile: 'Medium',
     );
     
-    context.read<AppState>().addProject(newProject);
+    // Await the network call so the calling screen can refresh after creation
+    await context.read<AppState>().addProject(newProject);
+    setState(() {
+      _isSubmitting = false;
+    });
     Navigator.pop(context);
   }
+
+  bool _isSubmitting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +74,12 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
             TextField(
               controller: _titleCtrl,
               decoration: const InputDecoration(labelText: 'Project Title'),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _landSizeCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Land Size (acres)'),
             ),
             const SizedBox(height: 15),
             TextField(
@@ -90,6 +104,12 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
             ),
             const SizedBox(height: 15),
             TextField(
+              controller: _expectedRoiCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Expected ROI (%)'),
+            ),
+            const SizedBox(height: 15),
+            TextField(
               controller: _capReqCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Capital Required (₹Cr)'),
@@ -101,7 +121,15 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
               decoration: const InputDecoration(labelText: 'Capital Raised (₹Cr)'),
             ),
             const SizedBox(height: 25),
-            ElevatedButton(onPressed: _submit, child: const Text('Create')),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submit,
+                child: _isSubmitting
+                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Create'),
+              ),
+            ),
           ],
         ),
       ),

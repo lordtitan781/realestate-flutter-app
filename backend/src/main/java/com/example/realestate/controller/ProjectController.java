@@ -1,74 +1,79 @@
 package com.example.realestate.controller;
 
 import com.example.realestate.model.Project;
-import com.example.realestate.repository.ProjectRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.realestate.service.ProjectService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects")
 @CrossOrigin(origins = "*")
 public class ProjectController {
 
-    @Autowired
-    private ProjectRepository projectRepository;
+    private final ProjectService projectService;
+
+    public ProjectController(ProjectService projectService) {
+        this.projectService = projectService;
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<Project> createProject(@RequestBody Project project) {
+        Project saved = projectService.createProject(project);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
 
     @GetMapping
-    public List<Project> getAllProjects(@RequestParam(required = false) String theme) {
-        System.out.println(">>> ProjectController: Fetching projects (Filter: " + theme + ")");
-        List<Project> projects = projectRepository.findAll();
-        if (theme != null && !theme.isEmpty()) {
-            return projects.stream()
-                    .filter(p -> theme.equalsIgnoreCase(p.getTheme()))
-                    .collect(Collectors.toList());
+    public List<ProjectResponse> getAllProjects() {
+        return projectService.getAllProjects().stream().map(project -> {
+            String stageName = project.getStage() != null ? project.getStage().name() : null;
+            double progressVal = projectService.calculateProjectProgress(stageName);
+            int progress = (int) progressVal;
+            return new ProjectResponse(
+                    project.getId(),
+                    project.getLandId(),
+                    project.getProjectName(),
+                    project.getLocation(),
+                    project.getLandSize(),
+                    project.getInvestmentRequired(),
+                    project.getExpectedROI(),
+                    project.getExpectedIRR(),
+                    stageName,
+                    progress
+            );
+        }).toList();
+    }
+
+    @PutMapping("/update-stage/{projectId}")
+    public ResponseEntity<?> updateProjectStage(@PathVariable Long projectId, @RequestParam String stage) {
+        try {
+            var updated = projectService.updateStage(projectId, stage);
+            if (updated.isPresent()) {
+                return ResponseEntity.ok(updated.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Project not found", Instant.now().toString()));
+            }
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(ex.getMessage(), Instant.now().toString()));
         }
-        return projects;
     }
 
-    @PostMapping
-    public Project createProject(@RequestBody Project project) {
-        System.out.println(">>> ProjectController: Creating new project: " + project.getTitle());
-        return projectRepository.save(project);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Project> getProjectById(@PathVariable Long id) {
-        return projectRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Project> updateProject(@PathVariable Long id, @RequestBody Project projectDetails) {
-        return projectRepository.findById(id)
-                .map(project -> {
-                    project.setTitle(projectDetails.getTitle());
-                    project.setLocation(projectDetails.getLocation());
-                    project.setTheme(projectDetails.getTheme());
-                    project.setIrr(projectDetails.getIrr());
-                    project.setCapitalRequired(projectDetails.getCapitalRequired());
-                    project.setCapitalRaised(projectDetails.getCapitalRaised());
-                    project.setStage(projectDetails.getStage());
-                    project.setImageUrl(projectDetails.getImageUrl());
-                    project.setProjectedGrowth(projectDetails.getProjectedGrowth());
-                    project.setDemandIndex(projectDetails.getDemandIndex());
-                    project.setRiskProfile(projectDetails.getRiskProfile());
-                    return ResponseEntity.ok(projectRepository.save(project));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        return projectRepository.findById(id)
-                .map(project -> {
-                    projectRepository.delete(project);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+    @GetMapping("/{projectId}/progress")
+    public ResponseEntity<?> getProjectProgress(@PathVariable("projectId") Long projectId) {
+        var opt = projectService.getProjectById(projectId);
+        if (opt.isPresent()) {
+            var project = opt.get();
+            String stageName = project.getStage() != null ? project.getStage().name() : null;
+            double progress = projectService.calculateProjectProgress(stageName);
+            ProjectProgressResponse resp = new ProjectProgressResponse(project.getProjectName(), stageName, (int) progress);
+            return ResponseEntity.ok(resp);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Project not found", Instant.now().toString()));
+        }
     }
 }

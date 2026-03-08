@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:realestate/shared/widgets/summary_card.dart';
 import '../../shared/app_state.dart';
+import 'explore_screen.dart';
+import 'portfolio_screen.dart';
+import '../finance/financial_calculator.dart';
 
 class InvestorDashboard extends StatelessWidget {
   const InvestorDashboard({super.key});
@@ -37,6 +40,37 @@ class InvestorDashboard extends StatelessWidget {
                   Text(
                     "Investor Dashboard",
                     style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 32),
+                  // Quick action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())),
+                          icon: const Icon(Icons.explore),
+                          label: const Text('Explore Projects'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PortfolioScreen())),
+                          icon: const Icon(Icons.pie_chart),
+                          label: const Text('My Portfolio'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinancialCalculator())),
+                      icon: const Icon(Icons.calculate),
+                      label: const Text('Smart Money Calculator'),
+                    ),
                   ),
                   const SizedBox(height: 32),
                   Row(

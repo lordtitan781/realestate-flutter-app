@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
+import 'features/finance/financial_calculator.dart';
+import 'features/admin/pending_lands_page.dart';
 import 'shared/app_state.dart';
 
 void main() {
@@ -23,6 +25,10 @@ class TourismInvestmentApp extends StatelessWidget {
       title: 'Investify',
       theme: AppTheme.lightTheme,
       home: const LoginScreen(),
+      routes: {
+        '/finance': (_) => const FinancialCalculator(),
+        '/admin': (_) => const PendingLandsPage(),
+      },
     );
   }
 }

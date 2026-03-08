@@ -4,6 +4,7 @@ import '../../../../shared/widgets/stage_badge.dart';
 import '../../models/project.dart';
 import '../../shared/app_state.dart';
 import '../../widgets/milestone_tile.dart';
+import '../projects/milestones_page.dart';
 
 class ProjectDetails extends StatefulWidget {
   final Project project;
@@ -66,6 +67,18 @@ class _ProjectDetailsState extends State<ProjectDetails> {
               ),
             ),
             const SizedBox(height: 32),
+
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => MilestonesPage(projectId: proj.id!, projectName: proj.title)),
+                );
+              },
+              icon: const Icon(Icons.event_note),
+              label: const Text('View Milestones'),
+            ),
+            const SizedBox(height: 12),
 
             // Financial Modelling Output (Requirement: ROI/IRR Projections)
             _sectionHeader(context, "Financial Projections"),
