@@ -10,6 +10,7 @@ class Land {
   final List<String>? utilities;
   final String reviewStatus;
   final String? adminNotes;
+  final String? phoneNumber;
 
   Land({
     this.id,
@@ -23,6 +24,7 @@ class Land {
     this.utilities,
     this.reviewStatus = 'PENDING',
     this.adminNotes,
+    this.phoneNumber,
   });
 
   factory Land.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Land {
       utilities: json['utilities'] != null ? List<String>.from(json['utilities']) : null,
       reviewStatus: json['reviewStatus'] ?? 'PENDING',
       adminNotes: json['adminNotes'],
+      phoneNumber: json['phoneNumber'],
     );
   }
 
@@ -54,6 +57,7 @@ class Land {
       'utilities': utilities,
       'reviewStatus': reviewStatus,
       'adminNotes': adminNotes,
+      'phoneNumber': phoneNumber,
     };
   }
 }

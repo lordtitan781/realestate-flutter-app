@@ -100,6 +100,7 @@ public class LandController {
                     land.setZoning(landDetails.getZoning());
                     land.setStage(landDetails.getStage());
                     land.setLegalDocuments(landDetails.getLegalDocuments());
+                    land.setPhoneNumber(landDetails.getPhoneNumber());
                     land.setUtilities(landDetails.getUtilities());
                     land.setReviewStatus(landDetails.getReviewStatus());
                     return ResponseEntity.ok(landRepository.save(land));

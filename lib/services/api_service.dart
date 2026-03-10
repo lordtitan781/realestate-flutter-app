@@ -7,6 +7,7 @@ import '../models/land.dart';
 import '../models/eoi.dart';
 import '../models/destination.dart';
 import '../models/project_milestone.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -39,11 +40,27 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> register(String email, String password, String role) async {
+  static Future<Map<String, dynamic>> register(
+    String email,
+    String password,
+    String role, {
+    double? minBudget,
+    double? maxBudget,
+    String? riskProfile,
+  }) async {
+    final payload = <String, dynamic>{
+      "email": email,
+      "password": password,
+      "role": role,
+      if (minBudget != null) "minBudget": minBudget,
+      if (maxBudget != null) "maxBudget": maxBudget,
+      if (riskProfile != null) "riskProfile": riskProfile,
+    };
+
     final response = await http.post(
       Uri.parse('$baseUrl/auth/register'),
       headers: {"Content-Type": "application/json"},
-      body: json.encode({"email": email, "password": password, "role": role}),
+      body: json.encode(payload),
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -87,25 +104,51 @@ class ApiService {
     if (theme != null && theme != 'All') {
       url += '?theme=${Uri.encodeComponent(theme)}';
     }
-    final response = await http.get(Uri.parse(url), headers: await _getHeaders());
+    final headers = await _getHeaders();
+    debugPrint('[API] GET $url with headers $headers');
+    final response = await http.get(Uri.parse(url), headers: headers);
+    debugPrint('[API] Response status: ${response.statusCode}');
+    debugPrint('[API] Response body: ${response.body}');
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => Project.fromJson(data)).toList();
+      debugPrint('[API] Parsed ${jsonResponse.length} projects');
+      return jsonResponse.map((data) {
+        debugPrint('[API] Project data: $data');
+        return Project.fromJson(data);
+      }).toList();
     } else {
       throw Exception('Failed to load projects');
     }
   }
 
   static Future<Project> createProject(Project project) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/projects/create'),
-      headers: await _getHeaders(),
-      body: json.encode(project.toJson()),
-    );
+    final url = '$baseUrl/projects/create';
+    final headers = await _getHeaders();
+    final body = json.encode(project.toJson());
+    debugPrint('[API] POST $url');
+    debugPrint('[API] Headers: $headers');
+    debugPrint('[API] Body: $body');
+    final response = await http.post(Uri.parse(url), headers: headers, body: body);
+    debugPrint('[API] Response status: ${response.statusCode}');
+    debugPrint('[API] Response body: ${response.body}');
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Project.fromJson(json.decode(response.body));
     } else {
-      throw Exception('Failed to create project');
+      throw Exception('Failed to create project: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  static Future<Project> updateProjectStage(int projectId, String stage) async {
+    final url = '$baseUrl/projects/update-stage/$projectId?stage=${Uri.encodeComponent(stage)}';
+    final headers = await _getHeaders();
+    debugPrint('[API] PUT $url');
+    final response = await http.put(Uri.parse(url), headers: headers);
+    debugPrint('[API] Response status: ${response.statusCode}');
+    debugPrint('[API] Response body: ${response.body}');
+    if (response.statusCode == 200) {
+      return Project.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to update project stage: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -165,8 +208,28 @@ class ApiService {
     );
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Eoi.fromJson(json.decode(response.body));
+    } else if (response.statusCode == 409) {
+      // Conflict: EOI already exists
+      throw Exception('EOI already submitted for this project');
     } else {
-      throw Exception('Failed to submit EOI');
+      throw Exception('Failed to submit EOI: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> checkEOIExists(int investorId, int projectId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/eois/check/$investorId/$projectId'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        return jsonResponse['exists'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error checking EOI existence: $e");
+      return false;
     }
   }
 

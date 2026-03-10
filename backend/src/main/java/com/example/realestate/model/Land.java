@@ -20,6 +20,7 @@ public class Land {
     private String stage;
 
     private String legalDocuments;
+    private String phoneNumber;
 
     @ElementCollection
     @CollectionTable(name = "land_utilities", joinColumns = @JoinColumn(name = "land_id"))
@@ -79,6 +80,9 @@ public class Land {
 
     public String getLegalDocuments() { return legalDocuments; }
     public void setLegalDocuments(String legalDocuments) { this.legalDocuments = legalDocuments; }
+
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
     public List<String> getUtilities() { return utilities; }
     public void setUtilities(List<String> utilities) { this.utilities = utilities; }

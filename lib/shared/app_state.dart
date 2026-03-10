@@ -26,9 +26,16 @@ class AppState extends ChangeNotifier {
   String? _currentUserRole;
   String? _currentUserEmail;
 
+  double? _minBudget;
+  double? _maxBudget;
+  String? _riskProfile;
+
   int? get currentUserId => _currentUserId;
   String? get currentUserRole => _currentUserRole;
   String? get currentUserEmail => _currentUserEmail;
+  double? get minBudget => _minBudget;
+  double? get maxBudget => _maxBudget;
+  String? get riskProfile => _riskProfile;
 
   Future<void> fetchAll() async {
     _isLoading = true;
@@ -75,12 +82,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await ApiService.login(email, password, role: role);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('jwt_token', response['token']);
-  await prefs.setString('user_role', response['role']);
-  _currentUserId = response['userId'];
-  _currentUserRole = response['role'];
-  _currentUserEmail = response['email'];
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', response['token']);
+      await prefs.setString('user_role', response['role']);
+      _currentUserId = response['userId'];
+      _currentUserRole = response['role'];
+      _currentUserEmail = response['email'];
+      _minBudget = (response['minBudget'] as num?)?.toDouble();
+      _maxBudget = (response['maxBudget'] as num?)?.toDouble();
+      _riskProfile = response['riskProfile'] as String?;
       
       // Fetch data based on the newly acquired role
       await fetchAll();
@@ -94,17 +104,34 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<bool> register(String email, String password, String role) async {
+  Future<bool> register(
+    String email,
+    String password,
+    String role, {
+    double? minBudget,
+    double? maxBudget,
+    String? riskProfile,
+  }) async {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await ApiService.register(email, password, role);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('jwt_token', response['token']);
-  await prefs.setString('user_role', response['role']);
-  _currentUserId = response['userId'];
-  _currentUserRole = response['role'];
-  _currentUserEmail = response['email'];
+      final response = await ApiService.register(
+        email,
+        password,
+        role,
+        minBudget: minBudget,
+        maxBudget: maxBudget,
+        riskProfile: riskProfile,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', response['token']);
+      await prefs.setString('user_role', response['role']);
+      _currentUserId = response['userId'];
+      _currentUserRole = response['role'];
+      _currentUserEmail = response['email'];
+      _minBudget = (response['minBudget'] as num?)?.toDouble();
+      _maxBudget = (response['maxBudget'] as num?)?.toDouble();
+      _riskProfile = response['riskProfile'] as String?;
       
       await fetchAll();
       return true;
@@ -124,6 +151,9 @@ class AppState extends ChangeNotifier {
     _currentUserId = null;
     _currentUserRole = null;
     _currentUserEmail = null;
+    _minBudget = null;
+    _maxBudget = null;
+    _riskProfile = null;
     _lands = [];
     _projects = [];
     _userEOIs = [];
@@ -137,6 +167,22 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint("Error adding project: $e");
+    }
+  }
+
+  Future<void> updateProjectStage(int projectId, String stage) async {
+    try {
+      final updated = await ApiService.updateProjectStage(projectId, stage);
+      final index = _projects.indexWhere((p) => p.id == updated.id);
+      if (index != -1) {
+        _projects[index] = updated;
+      } else {
+        _projects.add(updated);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error updating project stage: $e");
+      rethrow;
     }
   }
 
@@ -175,9 +221,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> adminRejectLand(int landId) async {
+  Future<void> adminRejectLand(int landId, {String? adminNotes}) async {
     try {
-      final updated = await ApiService.rejectLand(landId, adminNotes: 'Rejected via admin UI');
+      final updated = await ApiService.rejectLand(
+        landId,
+        adminNotes: adminNotes ?? 'Rejected via admin UI',
+      );
       await fetchPendingFromServer();
       notifyListeners();
     } catch (e) {
@@ -200,37 +249,85 @@ class AppState extends ChangeNotifier {
 
   Future<void> approveLand(int landId, String landName, String location) async {
     try {
+      // First approve the land in the backend
       await ApiService.updateLandReview(landId, 'APPROVED');
-      // Refresh only lands since we are Admin
+      
+      // Refresh lands to get updated status
       _lands = await ApiService.getLands();
 
+      // Create a new project linked to this approved land
       final newProject = Project(
+        landId: landId,
         projectName: '$landName Project',
         location: location,
         landSize: 0.0,
         investmentRequired: 0.0,
         expectedROI: 0.0,
         expectedIRR: 0.0,
-        stage: 'Feasibility',
+        stage: 'LAND_APPROVED',
       );
+      
+      // Add project to backend and state
       await addProject(newProject);
+      
+      // Fetch all projects again to ensure investors can see the new project
+      _projects = await ApiService.getProjects();
       notifyListeners();
     } catch (e) {
       debugPrint("Error approving land: $e");
     }
   }
 
-  Future<void> addToPortfolio(Project project) async {
-    if (project.id == null || _currentUserId == null) return;
+  Future<Project?> convertLandToProject(int landId, Map<String, dynamic> payload) async {
+    try {
+      final project = await ApiService.convertLandToProject(landId, payload);
+      _projects.add(project);
+      
+      // Refresh lands to remove from pending list
+      _lands = await ApiService.getLands();
+      
+      // Fetch all projects to ensure everyone can see it
+      _projects = await ApiService.getProjects();
+      
+      notifyListeners();
+      return project;
+    } catch (e) {
+      debugPrint('Error converting land: $e');
+      return null;
+    }
+  }
+
+  Future<bool> addToPortfolio(Project project) async {
+    if (project.id == null || _currentUserId == null) return false;
     try {
       final eoi = Eoi(investorId: _currentUserId!, projectId: project.id!);
       await ApiService.submitEOI(eoi);
-      if (_currentUserRole == 'INVESTOR') {
-        _userEOIs = await ApiService.getInvestorEOIs(_currentUserId!);
-      }
+      
+      // Always fetch the latest EOIs to ensure portfolio is up-to-date
+      _userEOIs = await ApiService.getInvestorEOIs(_currentUserId!);
+      
+      // Also refresh projects to ensure we have the latest data
+      _projects = await ApiService.getProjects();
+      
       notifyListeners();
+      return true;
     } catch (e) {
       debugPrint("Error submitting EOI: $e");
+      rethrow; // Let caller handle the error
     }
+  }
+
+  Future<bool> checkEOIExists(int projectId) async {
+    if (_currentUserId == null) return false;
+    try {
+      return await ApiService.checkEOIExists(_currentUserId!, projectId);
+    } catch (e) {
+      debugPrint("Error checking EOI: $e");
+      return false;
+    }
+  }
+
+  bool hasEOIForProject(int projectId) {
+    return _userEOIs.any((eoi) => eoi.projectId == projectId);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/project.dart';
-import '../features/projects/milestones_page.dart';
+import '../shared/app_state.dart';
 
 class ProjectCard extends StatelessWidget {
   final Project project;
@@ -19,13 +20,59 @@ class ProjectCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Project Image Placeholder (imageUrl kept for compatibility)
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              ),
-              child: const Icon(Icons.landscape, size: 48, color: Colors.grey),
+            Stack(
+              children: [
+                Container(
+                  height: 160,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  ),
+                  child: const Icon(Icons.landscape, size: 48, color: Colors.grey),
+                ),
+                // EOI Status Badge (top right)
+                Consumer<AppState>(
+                  builder: (context, appState, _) {
+                    final hasEOI = appState.hasEOIForProject(project.id!);
+                    if (hasEOI) {
+                      return Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'EOI Submitted',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -70,40 +117,14 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Stage: ${project.stage}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: project.id != null
-                                ? () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => MilestonesPage(
-                                          projectId: project.id!,
-                                          projectName: project.title,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                : null,
-                            child: const Text('View Milestones'),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, size: 18, color: Colors.grey),
-                        ],
-                      ),
-                    ],
+                  Text(
+                    "Stage: ${project.stage}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),

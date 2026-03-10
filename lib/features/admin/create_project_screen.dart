@@ -50,15 +50,22 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
       investmentRequired: capReq,
       expectedIRR: irr,
       expectedROI: expectedRoi,
-      stage: 'Feasibility',
+      stage: 'LAND_APPROVED',
     );
     
-    // Await the network call so the calling screen can refresh after creation
-    await context.read<AppState>().addProject(newProject);
-    setState(() {
-      _isSubmitting = false;
-    });
-    Navigator.pop(context);
+    try {
+      // Await the network call so the calling screen can refresh after creation
+      await context.read<AppState>().addProject(newProject);
+      setState(() {
+        _isSubmitting = false;
+      });
+      Navigator.pop(context);
+    } catch (e) {
+      setState(() {
+        _isSubmitting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+    }
   }
 
   bool _isSubmitting = false;

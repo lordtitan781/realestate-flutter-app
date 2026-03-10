@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:realestate/shared/widgets/summary_card.dart';
 import '../../shared/app_state.dart';
-import 'explore_screen.dart';
-import 'portfolio_screen.dart';
-import '../finance/financial_calculator.dart';
+import 'project_details.dart';
 
 class InvestorDashboard extends StatelessWidget {
   const InvestorDashboard({super.key});
@@ -22,6 +20,16 @@ class InvestorDashboard extends StatelessWidget {
             : portfolio.fold<double>(0, (p, t) => p + t.irr) / activeCount;
         final nextMilestone = activeCount > 0 ? portfolio.first.stage : 'N/A';
 
+        // Simple recommendation list based on investor budget preferences
+        final minBudget = appState.minBudget;
+        final maxBudget = appState.maxBudget;
+        final recommended = appState.projects.where((p) {
+          final cost = p.investmentRequired;
+          if (minBudget != null && cost < minBudget) return false;
+          if (maxBudget != null && cost > maxBudget) return false;
+          return true;
+        }).take(3).toList();
+
         if (appState.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -37,40 +45,32 @@ class InvestorDashboard extends StatelessWidget {
                     "Welcome back,",
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  Text(
-                    "Investor Dashboard",
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  // Quick action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())),
-                          icon: const Icon(Icons.explore),
-                          label: const Text('Explore Projects'),
-                        ),
+                      Text(
+                        "Investor Dashboard",
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PortfolioScreen())),
-                          icon: const Icon(Icons.pie_chart),
-                          label: const Text('My Portfolio'),
+                      if (minBudget != null || maxBudget != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.tune, size: 14, color: Colors.indigo),
+                              const SizedBox(width: 4),
+                              Text(
+                                "₹${(minBudget ?? 0).toStringAsFixed(0)} - ₹${(maxBudget ?? 0).toStringAsFixed(0)}",
+                                style: const TextStyle(fontSize: 11, color: Colors.indigo),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinancialCalculator())),
-                      icon: const Icon(Icons.calculate),
-                      label: const Text('Smart Money Calculator'),
-                    ),
                   ),
                   const SizedBox(height: 32),
                   Row(
@@ -109,6 +109,34 @@ class InvestorDashboard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 32),
+                  if (recommended.isNotEmpty) ...[
+                    Text(
+                      "Recommended for you",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...recommended.map(
+                      (proj) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(proj.title),
+                          subtitle: Text(
+                            "Req. ₹${proj.investmentRequired.toStringAsFixed(2)} • ${proj.expectedIRR.toStringAsFixed(1)}% IRR",
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProjectDetails(project: proj),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),

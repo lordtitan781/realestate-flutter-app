@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../shared/app_state.dart';
 import 'add_land_screen.dart';
-import 'my_lands_screen.dart';
 
 class LandownerDashboard extends StatelessWidget {
   const LandownerDashboard({super.key});

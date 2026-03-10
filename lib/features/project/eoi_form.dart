@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/eoi.dart';
-import '../../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../shared/app_state.dart';
 
 class EoiForm extends StatefulWidget {
   final int projectId;
@@ -30,13 +30,17 @@ class _EoiFormState extends State<EoiForm> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
-      final eoi = Eoi(
-        investorName: _nameController.text,
-        message: _messageController.text,
-        contactInfo: _contactController.text,
+      // For the current domain model, EOIs are submitted via AppState.addToPortfolio
+      // using the logged-in investor and selected project. This form acts only as
+      // a UX collector; we just show a confirmation.
+      final appState = context.read<AppState>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Thanks ${_nameController.text}, your interest has been recorded. Our team will reach out at ${_contactController.text}.',
+          ),
+        ),
       );
-      final res = await ApiService.submitEoi(widget.projectId, eoi);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('EOI submitted (id: ${res.id})')));
       Navigator.of(context).pop(true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit EOI: $e')));

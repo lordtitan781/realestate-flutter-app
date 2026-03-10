@@ -5,14 +5,60 @@ import '../../shared/app_state.dart';
 import 'project_details.dart';
 import '../projects/milestones_page.dart';
 
-class PortfolioScreen extends StatelessWidget {
+class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
+
+  @override
+  State<PortfolioScreen> createState() => _PortfolioScreenState();
+}
+
+class _PortfolioScreenState extends State<PortfolioScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Refresh EOI data when the screen is opened to get the latest portfolio
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = context.read<AppState>();
+      if (appState.currentUserId != null && appState.currentUserRole == 'INVESTOR') {
+        appState.fetchAll();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh portfolio when returning to this screen
+      final appState = context.read<AppState>();
+      if (appState.currentUserId != null && appState.currentUserRole == 'INVESTOR') {
+        appState.fetchAll();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Portfolio"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              final appState = context.read<AppState>();
+              if (appState.currentUserId != null && appState.currentUserRole == 'INVESTOR') {
+                appState.fetchAll();
+              }
+            },
+          ),
+        ],
       ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
@@ -100,10 +146,12 @@ class PortfolioScreen extends StatelessWidget {
                                 color: Colors.green,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: proj.id != null
-                                  ? () {
+                            if (proj.id != null && proj.title.isNotEmpty)
+                              Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
@@ -113,10 +161,11 @@ class PortfolioScreen extends StatelessWidget {
                                           ),
                                         ),
                                       );
-                                    }
-                                  : null,
-                              child: const Text('View Milestones'),
-                            ),
+                                    },
+                                    child: const Text('View Milestones'),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ],

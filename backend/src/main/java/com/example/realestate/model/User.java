@@ -20,6 +20,11 @@ public class User {
 
     private String resetToken;
 
+    // Optional investor profile fields for recommendation engine
+    private Double minBudget;
+    private Double maxBudget;
+    private String riskProfile;
+
     public User() {}
 
     public User(String email, String password, String role) {
@@ -42,4 +47,28 @@ public class User {
 
     public String getResetToken() { return resetToken; }
     public void setResetToken(String resetToken) { this.resetToken = resetToken; }
+
+    public Double getMinBudget() {
+        return minBudget;
+    }
+
+    public void setMinBudget(Double minBudget) {
+        this.minBudget = minBudget;
+    }
+
+    public Double getMaxBudget() {
+        return maxBudget;
+    }
+
+    public void setMaxBudget(Double maxBudget) {
+        this.maxBudget = maxBudget;
+    }
+
+    public String getRiskProfile() {
+        return riskProfile;
+    }
+
+    public void setRiskProfile(String riskProfile) {
+        this.riskProfile = riskProfile;
+    }
 }

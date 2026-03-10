@@ -71,8 +71,10 @@ public class AdminController {
         }
 
         Land land = optLand.get();
+        // Ensure the land is marked as approved when converting to a project.
+        // This lets admins approve & convert in a single step from the UI.
         if (!"APPROVED".equalsIgnoreCase(land.getReviewStatus())) {
-            return ResponseEntity.status(400).body(null);
+            land.setReviewStatus("APPROVED");
         }
 
         double estimatedCost = req.estimatedCost == null ? 0.0 : req.estimatedCost;
@@ -102,13 +104,9 @@ public class AdminController {
 
         Project saved = projectRepository.save(project);
 
-        // Optionally mark land as converted/listed
-        try {
-            land.setStage("CONVERTED_TO_PROJECT");
-            landRepository.save(land);
-        } catch (Exception ignored) {
-            // ignore if land doesn't have a stage field as enum/string mismatch
-        }
+        // Mark land as converted/listed so it disappears from the pending list.
+        land.setStage("CONVERTED_TO_PROJECT");
+        landRepository.save(land);
 
         return ResponseEntity.ok(saved);
     }

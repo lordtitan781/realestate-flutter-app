@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../shared/app_state.dart';
-import '../../services/api_service.dart'; // network helpers
 import '../investor/investor_shell.dart';
 import '../landowner/landowner_shell.dart';
 import '../admin/admin_shell.dart';
@@ -21,6 +20,9 @@ class _LoginScreenState extends State<LoginScreen> {
   String _role = "INVESTOR";
   String? _emailError;
   String? _passwordError;
+  final _minBudgetCtrl = TextEditingController();
+  final _maxBudgetCtrl = TextEditingController();
+  String _riskProfile = "Medium";
 
   void _submit() async {
     // basic validation
@@ -29,9 +31,26 @@ class _LoginScreenState extends State<LoginScreen> {
     final appState = context.read<AppState>();
     bool success;
     if (_isLogin) {
-      success = await appState.login(_emailCtrl.text.trim(), _passwordCtrl.text, role: _role);
+      success = await appState.login(
+        _emailCtrl.text.trim(),
+        _passwordCtrl.text,
+        role: _role,
+      );
     } else {
-      success = await appState.register(_emailCtrl.text.trim(), _passwordCtrl.text, _role);
+      double? minBudget;
+      double? maxBudget;
+      if (_role == "INVESTOR") {
+        minBudget = double.tryParse(_minBudgetCtrl.text.trim());
+        maxBudget = double.tryParse(_maxBudgetCtrl.text.trim());
+      }
+      success = await appState.register(
+        _emailCtrl.text.trim(),
+        _passwordCtrl.text,
+        _role,
+        minBudget: minBudget,
+        maxBudget: maxBudget,
+        riskProfile: _role == "INVESTOR" ? _riskProfile : null,
+      );
     }
 
     if (success) {
@@ -140,7 +159,58 @@ class _LoginScreenState extends State<LoginScreen> {
                     onChanged: (v) => setState(() => _role = v ?? "INVESTOR"),
                     decoration: const InputDecoration(labelText: "Role", prefixIcon: Icon(Icons.person_outline)),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
+                  if (!_isLogin && _role == "INVESTOR") ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Investment Preferences",
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _minBudgetCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: "Min Budget (₹)",
+                              prefixIcon: Icon(Icons.currency_rupee),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _maxBudgetCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: "Max Budget (₹)",
+                              prefixIcon: Icon(Icons.currency_rupee),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _riskProfile,
+                      items: const [
+                        DropdownMenuItem(value: "Conservative", child: Text("Conservative")),
+                        DropdownMenuItem(value: "Medium", child: Text("Balanced / Medium")),
+                        DropdownMenuItem(value: "Aggressive", child: Text("Aggressive")),
+                      ],
+                      onChanged: (v) => setState(() => _riskProfile = v ?? "Medium"),
+                      decoration: const InputDecoration(
+                        labelText: "Risk Profile",
+                        prefixIcon: Icon(Icons.shield_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ] else
+                    const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(

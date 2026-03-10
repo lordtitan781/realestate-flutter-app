@@ -44,6 +44,10 @@ public class AuthController {
         passwordEncoder.encode(request.getPassword()),
         request.getRole()
     );
+    // Optional investor profile details for recommendation engine
+    user.setMinBudget(request.getMinBudget());
+    user.setMaxBudget(request.getMaxBudget());
+    user.setRiskProfile(request.getRiskProfile());
     User savedUser = userRepository.save(user);
         
     // Include role in username portion so tokens are specific to an email+role account
@@ -55,7 +59,10 @@ public class AuthController {
                 jwtToken,
                 savedUser.getRole(),
                 savedUser.getEmail(),
-                savedUser.getId()
+                savedUser.getId(),
+                savedUser.getMinBudget(),
+                savedUser.getMaxBudget(),
+                savedUser.getRiskProfile()
         ));
     }
 
@@ -81,7 +88,10 @@ public class AuthController {
                 jwtToken,
                 user.getRole(),
                 user.getEmail(),
-                user.getId()
+                user.getId(),
+                user.getMinBudget(),
+                user.getMaxBudget(),
+                user.getRiskProfile()
         ));
     }
 
@@ -125,6 +135,9 @@ class RegisterRequest {
     private String email;
     private String password;
     private String role;
+    private Double minBudget;
+    private Double maxBudget;
+    private String riskProfile;
     public RegisterRequest() {}
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -132,6 +145,12 @@ class RegisterRequest {
     public void setPassword(String password) { this.password = password; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public Double getMinBudget() { return minBudget; }
+    public void setMinBudget(Double minBudget) { this.minBudget = minBudget; }
+    public Double getMaxBudget() { return maxBudget; }
+    public void setMaxBudget(Double maxBudget) { this.maxBudget = maxBudget; }
+    public String getRiskProfile() { return riskProfile; }
+    public void setRiskProfile(String riskProfile) { this.riskProfile = riskProfile; }
 }
 
 class AuthResponse {
@@ -139,14 +158,21 @@ class AuthResponse {
     private String role;
     private String email;
     private Long userId;
+    private Double minBudget;
+    private Double maxBudget;
+    private String riskProfile;
     
     public AuthResponse() {}
     
-    public AuthResponse(String token, String role, String email, Long userId) {
+    public AuthResponse(String token, String role, String email, Long userId,
+                        Double minBudget, Double maxBudget, String riskProfile) {
         this.token = token;
         this.role = role;
         this.email = email;
         this.userId = userId;
+        this.minBudget = minBudget;
+        this.maxBudget = maxBudget;
+        this.riskProfile = riskProfile;
     }
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
@@ -156,6 +182,12 @@ class AuthResponse {
     public void setEmail(String email) { this.email = email; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public Double getMinBudget() { return minBudget; }
+    public void setMinBudget(Double minBudget) { this.minBudget = minBudget; }
+    public Double getMaxBudget() { return maxBudget; }
+    public void setMaxBudget(Double maxBudget) { this.maxBudget = maxBudget; }
+    public String getRiskProfile() { return riskProfile; }
+    public void setRiskProfile(String riskProfile) { this.riskProfile = riskProfile; }
 }
 
 class ResetRequest {

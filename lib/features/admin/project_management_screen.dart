@@ -14,35 +14,25 @@ class ProjectManagementScreen extends StatefulWidget {
 }
 
 class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
+
   @override
   void initState() {
     super.initState();
-    // Load latest projects when screen is shown
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProjects());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProjects();
+    });
   }
 
   Future<void> _loadProjects() async {
     final appState = context.read<AppState>();
     await appState.fetchAll();
-    setState(() {});
   }
+
   void _updateStage(BuildContext context, int idx, String newStage) {
     final appState = context.read<AppState>();
     final currentProj = appState.projects[idx];
-    
-    final updatedProj = Project(
-      id: currentProj.id,
-      projectName: currentProj.projectName,
-      location: currentProj.location,
-      landSize: currentProj.landSize,
-      investmentRequired: currentProj.investmentRequired,
-      expectedROI: currentProj.expectedROI,
-      expectedIRR: currentProj.expectedIRR,
-      stage: newStage,
-    );
-    
-    appState.addProject(updatedProj);
-    setState(() {});
+    if (currentProj.id == null) return;
+    appState.updateProjectStage(currentProj.id!, newStage);
   }
 
   @override
@@ -54,11 +44,13 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () async {
-              // Open create screen and refresh on return
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const CreateProjectScreen(),
+                ),
               );
+
               await _loadProjects();
             },
           )
@@ -67,82 +59,103 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
       body: Consumer<AppState>(
         builder: (context, appState, child) {
           if (appState.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (appState.projects.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: _loadProjects,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 300),
+                  Center(
+                    child: Text('No projects created yet'),
+                  )
+                ],
+              ),
+            );
           }
 
           return SafeArea(
             child: RefreshIndicator(
               onRefresh: _loadProjects,
-              child: appState.projects.isEmpty
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Container(
-                        height: MediaQuery.of(context).size.height * 0.6,
-                        alignment: Alignment.center,
-                        child: const Text('No projects created yet.'),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: appState.projects.length,
-                      itemBuilder: (context, i) {
-                        final proj = appState.projects[i];
-                        return Card(
-                          child: ListTile(
-                            title: Text(proj.title),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Location: ${proj.location}'),
-                                const SizedBox(height: 4),
-                                Text('Expected ROI: ${proj.expectedROI.toStringAsFixed(2)}%'),
-                                const SizedBox(height: 4),
-                                Text('Capital Required: ₹${proj.capitalRequired.toStringAsFixed(2)}'),
-                              ],
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: appState.projects.length,
+                itemBuilder: (context, i) {
+                  final proj = appState.projects[i];
+
+                  return Card(
+                    elevation: 3,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            proj.projectName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
-                            isThreeLine: true,
-                            trailing: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                DropdownButton<String>(
+                          ),
+                          const SizedBox(height: 8),
+                          Text("Location: ${proj.location}"),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Text('Update Stage: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: DropdownButton<String>(
                                   value: proj.stage,
+                                  isExpanded: true,
                                   items: const [
-                                    DropdownMenuItem(value: 'LAND_APPROVED', child: Text('Land Approved')),
-                                    DropdownMenuItem(value: 'INVESTORS_JOINED', child: Text('Investors Joined')),
-                                    DropdownMenuItem(value: 'DESIGN_PLANNING', child: Text('Design / Planning')),
-                                    DropdownMenuItem(value: 'CONSTRUCTION_STARTED', child: Text('Construction Started')),
-                                    DropdownMenuItem(value: 'RESORT_COMPLETED', child: Text('Resort Completed')),
-                                    DropdownMenuItem(value: 'TOURISTS_ARRIVING', child: Text('Tourists Arriving')),
+                                    DropdownMenuItem(value: 'LAND_APPROVED', child: Text('1. Land Approved')),
+                                    DropdownMenuItem(value: 'FUNDING', child: Text('2. Investors Joined')),
+                                    DropdownMenuItem(value: 'PLANNING', child: Text('3. Design Planning')),
+                                    DropdownMenuItem(value: 'CONSTRUCTION', child: Text('4. Construction Started')),
+                                    DropdownMenuItem(value: 'COMPLETED', child: Text('5. Resort Completed')),
+                                    DropdownMenuItem(value: 'OPERATIONAL', child: Text('6. Tourists Arriving')),
+                                    DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
                                   ],
-                                  onChanged: (v) {
-                                    if (v != null) {
-                                      _updateStage(context, i, v);
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _updateStage(context, i, value);
                                     }
                                   },
                                 ),
-                                const SizedBox(height: 8),
-                                ElevatedButton(
-                                  onPressed: proj.id != null
-                                      ? () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => MilestonesPage(
-                                                projectId: proj.id!,
-                                                projectName: proj.title,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-                                  child: const Text('View Milestones'),
-                                ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MilestonesPage(
+                                      projectId: proj.id!,
+                                      projectName: proj.projectName,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text("Detailed Log"),
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
+                  );
+                },
+              ),
             ),
           );
         },

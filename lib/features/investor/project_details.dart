@@ -17,6 +17,118 @@ class ProjectDetails extends StatefulWidget {
 
 class _ProjectDetailsState extends State<ProjectDetails> {
   bool _complianceAccepted = false;
+  bool _eoiSubmitted = false;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfEOIExists();
+  }
+
+  Future<void> _checkIfEOIExists() async {
+    final appState = context.read<AppState>();
+    final exists = appState.hasEOIForProject(widget.project.id!);
+    setState(() {
+      _eoiSubmitted = exists;
+    });
+  }
+
+  Future<void> _submitEOI() async {
+    if (!_complianceAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please accept the compliance terms first')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final success = await context.read<AppState>().addToPortfolio(widget.project);
+      
+      if (success && mounted) {
+        setState(() => _eoiSubmitted = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Expression of Interest submitted for ${widget.project.title}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Pop back after successful submission
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        final errorMessage = e.toString().contains('already submitted')
+            ? 'You have already submitted an EOI for this project'
+            : 'Failed to submit EOI. Please try again.';
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+        
+        setState(() => _eoiSubmitted = true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  // Define standard milestones and map them to stages
+  final List<String> _allMilestones = [
+    'Land Approved',
+    'Investors Joined',
+    'Design Planning',
+    'Construction Started',
+    'Resort Completed',
+    'Tourists Arriving',
+  ];
+
+  // Helper to determine completion based on current stage
+  bool _isMilestoneCompleted(String milestone, String? stage) {
+    if (stage == null) return false;
+    
+    // Mapping internal stage constants to milestone indices
+    final Map<String, int> stageToIndex = {
+      'LAND_APPROVED': 0,
+      'FUNDING': 1,
+      'PLANNING': 2,
+      'CONSTRUCTION': 3,
+      'COMPLETED': 4,
+      'OPERATIONAL': 5, // Assuming this for 'Tourists Arriving'
+    };
+
+    final currentStageIndex = stageToIndex[stage] ?? -1;
+    final milestoneIndex = _allMilestones.indexOf(milestone);
+    
+    return milestoneIndex <= currentStageIndex;
+  }
+
+  bool _isMilestoneInProgress(String milestone, String? stage) {
+    if (stage == null) return false;
+    
+    final Map<String, int> stageToIndex = {
+      'LAND_APPROVED': 0,
+      'FUNDING': 1,
+      'PLANNING': 2,
+      'CONSTRUCTION': 3,
+      'COMPLETED': 4,
+      'OPERATIONAL': 5,
+    };
+
+    final currentStageIndex = stageToIndex[stage] ?? -1;
+    final milestoneIndex = _allMilestones.indexOf(milestone);
+    
+    return milestoneIndex == currentStageIndex + 1;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,18 +180,6 @@ class _ProjectDetailsState extends State<ProjectDetails> {
             ),
             const SizedBox(height: 32),
 
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => MilestonesPage(projectId: proj.id!, projectName: proj.title)),
-                );
-              },
-              icon: const Icon(Icons.event_note),
-              label: const Text('View Milestones'),
-            ),
-            const SizedBox(height: 12),
-
             // Financial Modelling Output (Requirement: ROI/IRR Projections)
             _sectionHeader(context, "Financial Projections"),
             const SizedBox(height: 12),
@@ -92,13 +192,28 @@ class _ProjectDetailsState extends State<ProjectDetails> {
             ),
             const SizedBox(height: 32),
 
-            // Project Lifecycle Tracker (Requirement: Milestone Visibility)
+            // Project Lifecycle Tracker (Standardized Milestones)
             _sectionHeader(context, "Development Roadmap"),
-            const SizedBox(height: 12),
-            MilestoneTile(title: "Feasibility Study", completed: true),
-            MilestoneTile(title: "Regulatory Approvals", completed: proj.stage != "Feasibility", inProgress: proj.stage == "Approvals"),
-            MilestoneTile(title: "Construction Phase", completed: proj.stage == "Operational", inProgress: proj.stage == "Construction"),
-            MilestoneTile(title: "Operational Handover", inProgress: proj.stage == "Operational"),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: Column(
+                children: _allMilestones.map((milestone) {
+                  final isCompleted = _isMilestoneCompleted(milestone, proj.stage);
+                  final isInProgress = _isMilestoneInProgress(milestone, proj.stage);
+                  
+                  return MilestoneTile(
+                    title: milestone,
+                    completed: isCompleted,
+                    inProgress: isInProgress,
+                  );
+                }).toList(),
+              ),
+            ),
             const SizedBox(height: 32),
 
             // Compliance & Disclaimer (Requirement: Compliance controls)
@@ -120,7 +235,7 @@ class _ProjectDetailsState extends State<ProjectDetails> {
                     children: [
                       Checkbox(
                         value: _complianceAccepted,
-                        onChanged: (val) => setState(() => _complianceAccepted = val!),
+                        onChanged: _eoiSubmitted ? null : (val) => setState(() => _complianceAccepted = val!),
                       ),
                       const Expanded(
                         child: Text("I acknowledge the financial modelling assumptions and risk profile.", style: TextStyle(fontSize: 12)),
@@ -132,15 +247,49 @@ class _ProjectDetailsState extends State<ProjectDetails> {
             ),
             const SizedBox(height: 32),
 
-            ElevatedButton(
-              onPressed: _complianceAccepted ? () {
-                context.read<AppState>().addToPortfolio(proj);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Expression of Interest submitted for ${proj.title}')),
-                );
-              } : null,
-              child: const Text('Submit Expression of Interest (EOI)'),
-            ),
+            // EOI Status or Submit Button
+            if (_eoiSubmitted)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'EOI Submitted',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                          ),
+                          const Text(
+                            'This project has been added to your portfolio',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ElevatedButton(
+                onPressed: (_complianceAccepted && !_isSubmitting) ? _submitEOI : null,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Submit Expression of Interest (EOI)'),
+              ),
             const SizedBox(height: 40),
           ],
         ),
